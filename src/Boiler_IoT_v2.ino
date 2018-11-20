@@ -76,8 +76,12 @@ http_header_t headers[] = {
   { NULL, NULL } // NOTE: Always terminate headers will NULL
 };
 
+// Set pin for DEEP_SLEEP override
+int sleep_Override = D7;
 
 void setup() {
+
+  pinMode(sleep_Override, INPUT_PULLUP);
 
   #ifdef LOGGING
   Serial.begin(9600);
@@ -148,10 +152,34 @@ void loop() {
 
   /* Put Photon to sleep for a designated period of seconds
   * Deep sleep shuts down MCU & network functions.
-  * On wake-up system is re-initialized, with all registers and SRAM cleared
+  * On wake-up system is re-initialized, with all registers and SRAM cleared.
+  *
+  * To ensure comms with photon is possible for reflashing, D7 can be shorted to
+  * ground to prevent DEEP_SLEEP mode.
   */
+  int readVal = digitalRead(sleep_Override);
+  #ifdef LOGGING
+  Serial.print("Application>\t Override Pin status: ");
+  Serial.println(readVal);
+  #endif
 
-  System.sleep(SLEEP_MODE_DEEP,sleepTime);
+  // If override pin is not shorted, put system to sleep
+  if (readVal == HIGH) {
+    #ifdef LOGGING
+    Serial.print("Application>\t System shutting down.");
+    #endif
+    delay(5000);
+    System.sleep(SLEEP_MODE_DEEP,sleepTime);
+  }
+
+  // If override pins are shorted do not put to sleep but run loop until jumper is removed
+  else {
+    #ifdef LOGGING
+    Serial.println("Application>\t Shutdown bypass detected, loop will run again.");
+    #endif
+    delay(30000);
+  }
+
 
 }
 //End of Loop.
@@ -201,7 +229,7 @@ int errChk(String str){
       Serial.print("Error Checking>\t Error detected!! Error number is: ");
       Serial.println(errNum);
       Serial.print("Error Checking>\t Status is: ");
-      Serial.println(str.charAt(index));
+      Serial.print(str.charAt(index));
       Serial.print(". Found at index: ");
       Serial.println(index);
       #endif
