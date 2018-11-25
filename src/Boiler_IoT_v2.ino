@@ -87,13 +87,6 @@ void setup() {
   Serial.begin(9600);
   #endif
 
-// Check if critical error timer has expired
-  int crit_err_timer;
-  crit_err_timer = Time.weekday();
-  if (crit_err_timer != day) {
-    // If timer is expired reset critical error flag
-    critical_Err = 0;
-  }
 }
 
 void loop() {
@@ -118,7 +111,7 @@ void loop() {
 
 // If a correct response is recieved, check response values for errors, publish error if any are found
   //See https://en.wikipedia.org/wiki/List_of_HTTP_status_codes for response status codes
-  if (response.status > 0 && response.status < 400) {
+  if (response.status == 200) {
 
     // Check response for error and assign error code to errorVAL
     int errVAL = errChk(response.body);
@@ -139,6 +132,9 @@ void loop() {
       #ifndef LOCAL
       errPublish(errCode, errVAL);
       #endif
+    } else {
+      // When no errors present, reset critical_Err
+      critical_Err = 0;
     }
 
   } else {
@@ -293,6 +289,13 @@ void errPublish(String str, int value) {
   bool success;
   String eventName;
 
+  // Check if critical error timer has expired
+  int crit_err_timer;
+  crit_err_timer = Time.weekday();
+  if (crit_err_timer != day) {
+    // If timer is expired reset critical error flag
+    critical_Err = 0;
+  }
 
   /*Check if error is critical to determine publishing criteria:
   * If a critical error occured, check error flag is not set.
